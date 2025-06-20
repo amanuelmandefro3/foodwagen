@@ -1,14 +1,71 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bike, ShoppingBag, Search } from "lucide-react"
+import { Bike, ShoppingBag, Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useSearch } from "@/hooks/use-meals"
+import { toast } from "sonner"
 
 export function HeroSection() {
   const [activeTab, setActiveTab] = useState<"delivery" | "pickup">("delivery")
+  const [searchInput, setSearchInput] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+  
+  const { 
+    searchMeals, 
+    clearSearch, 
+    searchQuery, 
+    searching, 
+    searchError, 
+    isSearchMode,
+    clearSearchError
+  } = useSearch()
+
+  // Only sync search input with store query when store query changes
+  // This prevents overwriting user input while typing
+  useEffect(() => {
+    // Only update if searchQuery has actually changed from external source
+    // (e.g., when clearing search from elsewhere)
+    if (searchQuery !== searchInput && !document.activeElement?.isSameNode(inputRef.current)) {
+      setSearchInput(searchQuery)
+    }
+  }, [searchQuery])
+
+  // Show error toast if search fails
+  useEffect(() => {
+    if (searchError) {
+      toast.error(searchError)
+      clearSearchError()
+    }
+  }, [searchError, clearSearchError])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const query = searchInput.trim()
+    
+    if (!query) {
+      // Don't clear search, just don't search
+      return
+    }
+    
+    searchMeals(query)
+  }
+
+  const handleClearSearch = () => {
+    setSearchInput("")
+    clearSearch()
+    // Focus back on input after clearing
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 0)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value)
+  }
 
   return (
     <section className="w-full py-12 md:py-20 lg:py-28 bg-brand-yellow">
@@ -48,24 +105,49 @@ export function HeroSection() {
                   <ShoppingBag className="w-5 h-5 mr-2" /> Pickup
                 </Button>
               </div>
-              <div className="flex space-x-2">
+              <form onSubmit={handleSearch} className="flex space-x-2">
                 <div className="relative flex-grow">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                   <Input
+                    ref={inputRef}
                     type="text"
                     placeholder="What do you like to eat today?"
-                    className="pl-10 w-full rounded-md h-12"
+                    className="pl-10 pr-10 w-full rounded-md h-12"
+                    value={searchInput}
+                    onChange={handleInputChange}
                   />
+                  {isSearchMode && searchInput && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-                <Button className="bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md h-12 px-6">
-                  <Search className="w-5 h-5 mr-2 sm:hidden" />
-                  <span className="hidden sm:inline">Find Meal</span>
+                <Button 
+                  type="submit" 
+                  className="bg-brand-orange hover:bg-brand-orange/90 text-white rounded-md h-12 px-6"
+                  disabled={searching}
+                >
+                  {searching ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                      <span className="hidden sm:inline">Searching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-5 h-5 mr-2 sm:hidden" />
+                      <span className="hidden sm:inline">Find Meal</span>
+                    </>
+                  )}
                 </Button>
-              </div>
+              </form>
             </div>
           </div>
           <Image
-            src="/placeholder.svg?width=600&height=500"
+            src="/hero-image.jpg"
             alt="Bowl of noodles"
             width={600}
             height={500}
