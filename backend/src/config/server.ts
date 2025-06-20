@@ -3,7 +3,11 @@ export const serverConfig = {
   environment: process.env.NODE_ENV || 'development',
   apiPrefix: '/api',
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+      'http://localhost:3000',
+      'https://foodwagen.vercel.app',
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ],
     credentials: true,
   }
 }; 
